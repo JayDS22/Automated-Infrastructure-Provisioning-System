@@ -1,0 +1,88 @@
+---
+# Base OS configuration applied to all provisioned VMs.
+# Handles package management, users, NTP, sysctl tuning, and SSH keys.
+
+- name: Set hostname from inventory
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Configure /etc/hosts with cluster peers
+  ansible.builtin.template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Update package cache and install baseline packages
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    name: "{{ base_packages }}"
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Install baseline packages (RHEL)
+  ansible.builtin.dnf:
+    name: "{{ base_packages_rhel }}"
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Create service accounts
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    groups: "{{ item.groups | default(omit) }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    system: "{{ item.system | default(false) }}"
+    create_home: "{{ item.create_home | default(true) }}"
+  loop: "{{ service_accounts }}"
+
+- name: Deploy authorized SSH keys for service accounts
+  ansible.posix.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ item.ssh_key }}"
+    state: present
+  loop: "{{ service_accounts }}"
+  when: item.ssh_key is defined
+
+- name: Configure NTP via chrony
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart chrony
+
+- name: Apply sysctl performance tuning
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop: "{{ sysctl_params | dict2items }}"
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Configure log rotation for application logs
+  ansible.builtin.template:
+    src: logrotate-app.j2
+    dest: /etc/logrotate.d/app-logs
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Ensure required directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /opt/app
+    - /var/log/app
+    - /etc/app

@@ -1,0 +1,39 @@
+{
+  "project_name": "ecommerce-platform",
+  "environment": "dev",
+  "requestor": "devops@company.com",
+  "itsm_ticket": "CHG0012345",
+  "web_tier": {
+    "vm_count": 2,
+    "vm_size": "medium",
+    "disk_gb": 60
+  },
+  "app_tier": {
+    "vm_count": 2,
+    "vm_size": "large",
+    "disk_gb": 100
+  },
+  "db_tier": {
+    "vm_count": 1,
+    "vm_size": "db_optimized",
+    "disk_gb": 200,
+    "additional_disks": [
+      {"size_gb": 500, "thin": false}
+    ]
+  },
+  "network": {
+    "cidr_block": "10.20.0.0/16",
+    "enable_nsx": true,
+    "micro_segmentation": true,
+    "allowed_ports": [
+      {"port": 22, "proto": "tcp", "src": "10.0.0.0/8"},
+      {"port": 443, "proto": "tcp"},
+      {"port": 8080, "proto": "tcp", "src": "10.20.0.0/16"}
+    ]
+  },
+  "custom_tags": {
+    "cost_center": "CC-1234",
+    "owner": "platform-team"
+  },
+  "callback_url": "https://hooks.company.com/infra/provision-complete"
+}

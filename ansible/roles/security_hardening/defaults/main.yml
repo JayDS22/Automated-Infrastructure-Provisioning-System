@@ -1,0 +1,41 @@
+---
+manage_firewall: true
+
+ssh_port: 22
+ssh_permit_root: "no"
+ssh_password_auth: "no"
+ssh_max_auth_tries: 3
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+ssh_allowed_users: "deploy ansible"
+
+disabled_filesystems:
+  - cramfs
+  - freevxfs
+  - jffs2
+  - hfs
+  - hfsplus
+  - squashfs
+  - udf
+  - usb-storage
+
+sensitive_file_permissions:
+  - { path: "/etc/passwd", mode: "0644" }
+  - { path: "/etc/shadow", mode: "0640", group: "shadow" }
+  - { path: "/etc/group", mode: "0644" }
+  - { path: "/etc/gshadow", mode: "0640", group: "shadow" }
+  - { path: "/etc/crontab", mode: "0600" }
+
+firewall_allowed_ports:
+  - { port: "22", proto: "tcp", src: "10.0.0.0/8" }
+  - { port: "9100", proto: "tcp", src: "10.0.0.0/8" }
+
+# fail2ban settings
+fail2ban_maxretry: 5
+fail2ban_bantime: 3600
+fail2ban_findtime: 600
+
+# Password policy
+password_min_length: 14
+password_min_class: 3
+password_max_repeat: 3

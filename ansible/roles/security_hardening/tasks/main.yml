@@ -1,0 +1,114 @@
+---
+# CIS-aligned security hardening for Linux VMs.
+# Covers SSH lockdown, firewall rules, audit logging, and filesystem permissions.
+
+- name: Harden SSH configuration
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+
+- name: Disable unused filesystems
+  ansible.builtin.copy:
+    dest: "/etc/modprobe.d/disable-{{ item }}.conf"
+    content: "install {{ item }} /bin/true\n"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ disabled_filesystems }}"
+
+- name: Set restrictive permissions on sensitive files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: "{{ item.group | default('root') }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ sensitive_file_permissions }}"
+
+- name: Configure audit rules
+  ansible.builtin.template:
+    src: audit.rules.j2
+    dest: /etc/audit/rules.d/hardening.rules
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart auditd
+
+- name: Install and configure fail2ban
+  block:
+    - name: Install fail2ban
+      ansible.builtin.package:
+        name: fail2ban
+        state: present
+
+    - name: Deploy fail2ban jail config
+      ansible.builtin.template:
+        src: jail.local.j2
+        dest: /etc/fail2ban/jail.local
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart fail2ban
+
+- name: Configure UFW firewall rules
+  block:
+    - name: Set default deny incoming
+      community.general.ufw:
+        direction: incoming
+        default: deny
+
+    - name: Set default allow outgoing
+      community.general.ufw:
+        direction: outgoing
+        default: allow
+
+    - name: Allow configured ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.port }}"
+        proto: "{{ item.proto | default('tcp') }}"
+        src: "{{ item.src | default('any') }}"
+      loop: "{{ firewall_allowed_ports }}"
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+  when: manage_firewall | bool
+
+- name: Set password policy via PAM
+  ansible.builtin.template:
+    src: pwquality.conf.j2
+    dest: /etc/security/pwquality.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure login banner
+  ansible.builtin.copy:
+    dest: /etc/issue.net
+    content: |
+      ************************************************************
+      * This system is managed infrastructure. Unauthorized      *
+      * access is prohibited. All sessions are logged and        *
+      * monitored. Disconnect immediately if not authorized.     *
+      ************************************************************
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Disable core dumps
+  ansible.posix.sysctl:
+    name: fs.suid_dumpable
+    value: "0"
+    sysctl_set: true
+    reload: true
+
+- name: Set UMASK to 027
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: "^UMASK"
+    line: "UMASK 027"

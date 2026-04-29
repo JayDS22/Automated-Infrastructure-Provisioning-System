@@ -1,0 +1,53 @@
+# Infrastructure Provisioning System Configuration
+# Copy to config/settings.yaml and fill in your values.
+
+# API server
+host: "0.0.0.0"
+port: 8000
+workers: 4
+debug: false
+
+# Logging
+log_level: "INFO"
+json_logs: true
+
+# vSphere Connection
+vsphere:
+  server: "vcenter.infra.local"
+  user: "provisioner@vsphere.local"
+  password: "${VSPHERE_PASSWORD}"
+  datacenter: "DC-01"
+  cluster: "Cluster-01"
+  datastore: "datastore-ssd-01"
+  template: "ubuntu-22.04-template"
+
+# NSX-T Connection
+nsx:
+  manager: "nsx-mgr.infra.local"
+  username: "admin"
+  password: "${NSX_PASSWORD}"
+  tier0_gateway_path: "/infra/tier-0s/T0-Gateway"
+  transport_zone: "nsx-overlay-transportzone"
+
+# ITSM Integration (set provider to 'none' to disable)
+itsm:
+  provider: "servicenow"  # servicenow | jira | none
+  # ServiceNow settings
+  instance_url: "yourinstance.service-now.com"
+  username: "api_user"
+  password: "${SNOW_PASSWORD}"
+  # Jira settings (used when provider is 'jira')
+  # base_url: "https://yourorg.atlassian.net"
+  # email: "automation@yourorg.com"
+  # api_token: "${JIRA_TOKEN}"
+  # project_key: "INFRA"
+
+# Ansible
+ansible:
+  ssh_user: "deploy"
+  ssh_key_path: "~/.ssh/infra_deploy"
+  become: true
+
+# Redis (for Celery task queue in production)
+redis:
+  url: "redis://localhost:6379/0"

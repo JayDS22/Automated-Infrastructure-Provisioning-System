@@ -1,0 +1,67 @@
+---
+# Deploys Prometheus node_exporter and configures log shipping via rsyslog.
+
+- name: Create prometheus system user
+  ansible.builtin.user:
+    name: prometheus
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Download node_exporter
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
+    checksum: "sha256:{{ node_exporter_checksum }}"
+    mode: "0644"
+
+- name: Extract node_exporter binary
+  ansible.builtin.unarchive:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
+    dest: /usr/local/bin/
+    remote_src: true
+    extra_opts:
+      - "--strip-components=1"
+      - "--wildcards"
+      - "*/node_exporter"
+
+- name: Deploy node_exporter systemd unit
+  ansible.builtin.template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart node_exporter
+
+- name: Enable and start node_exporter
+  ansible.builtin.systemd:
+    name: node_exporter
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Configure rsyslog forwarding to central log server
+  ansible.builtin.template:
+    src: rsyslog-forward.conf.j2
+    dest: /etc/rsyslog.d/50-forward.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart rsyslog
+  when: log_server is defined
+
+- name: Deploy custom metric collection script
+  ansible.builtin.template:
+    src: collect_metrics.sh.j2
+    dest: /usr/local/bin/collect_metrics.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Schedule metric collection via cron
+  ansible.builtin.cron:
+    name: "collect app metrics"
+    minute: "*/5"
+    job: "/usr/local/bin/collect_metrics.sh >> /var/log/metrics.log 2>&1"
+    user: prometheus

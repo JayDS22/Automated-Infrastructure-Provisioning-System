@@ -1,0 +1,49 @@
+---
+timezone: "America/New_York"
+
+base_packages:
+  - curl
+  - wget
+  - vim
+  - htop
+  - net-tools
+  - jq
+  - unzip
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - open-vm-tools
+  - chrony
+  - rsyslog
+  - logrotate
+  - python3-pip
+
+base_packages_rhel:
+  - curl
+  - wget
+  - vim-enhanced
+  - htop
+  - net-tools
+  - jq
+  - unzip
+  - ca-certificates
+  - open-vm-tools
+  - chrony
+  - rsyslog
+  - logrotate
+  - python3-pip
+
+ntp_servers:
+  - "0.pool.ntp.org"
+  - "1.pool.ntp.org"
+  - "2.pool.ntp.org"
+
+sysctl_params:
+  net.core.somaxconn: "65535"
+  net.ipv4.tcp_max_syn_backlog: "65535"
+  net.ipv4.ip_local_port_range: "1024 65535"
+  net.ipv4.tcp_tw_reuse: "1"
+  vm.swappiness: "10"
+  fs.file-max: "2097152"
+
+service_accounts: []

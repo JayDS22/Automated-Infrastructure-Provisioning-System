@@ -1,0 +1,74 @@
+---
+# Full post-provisioning pipeline applied after Terraform creates VMs.
+# Runs: base config -> security hardening -> monitoring -> app-specific setup.
+
+- name: Post-provisioning baseline
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Wait for SSH to become available
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+        delay: 10
+
+    - name: Gather facts after connection
+      ansible.builtin.setup:
+
+  roles:
+    - role: base_config
+    - role: security_hardening
+    - role: monitoring_agent
+
+  post_tasks:
+    - name: Write provisioning marker
+      ansible.builtin.copy:
+        dest: /etc/provisioning-metadata.json
+        content: |
+          {
+            "provisioned_at": "{{ ansible_date_time.iso8601 }}",
+            "ansible_version": "{{ ansible_version.full }}",
+            "environment": "{{ env | default('unknown') }}",
+            "playbook": "site.yml"
+          }
+        owner: root
+        group: root
+        mode: "0644"
+
+- name: Web tier specific config
+  hosts: web
+  become: true
+
+  roles:
+    - role: app_deploy
+      vars:
+        app_type: "nginx"
+        app_ports: [80, 443]
+
+- name: App tier specific config
+  hosts: app
+  become: true
+
+  roles:
+    - role: app_deploy
+      vars:
+        app_type: "application"
+        app_ports: [8080, 8443]
+
+- name: Database tier specific config
+  hosts: db
+  become: true
+
+  tasks:
+    - name: Configure kernel params for database workloads
+      ansible.posix.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        sysctl_set: true
+        reload: true
+      loop:
+        - { key: "vm.dirty_ratio", value: "15" }
+        - { key: "vm.dirty_background_ratio", value: "5" }
+        - { key: "vm.overcommit_memory", value: "2" }
+        - { key: "kernel.shmmax", value: "{{ (ansible_memtotal_mb * 1024 * 1024 * 0.75) | int }}" }

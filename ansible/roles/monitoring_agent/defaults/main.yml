@@ -1,0 +1,20 @@
+---
+node_exporter_version: "1.7.0"
+node_exporter_checksum: "a550cd5c05f760b7934a2d0afad66d2e92e681482f5f57a917465b1fba3b02a6"
+node_exporter_port: 9100
+
+node_exporter_collectors:
+  - cpu
+  - diskstats
+  - filesystem
+  - loadavg
+  - meminfo
+  - netdev
+  - netstat
+  - stat
+  - time
+  - vmstat
+
+log_server: ""
+log_server_port: 514
+log_protocol: "tcp"
