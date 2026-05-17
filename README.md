@@ -5,31 +5,15 @@ VMware vSphere/NSX-T with a Python orchestration engine and REST API layer.
 
 ## Architecture
 
-```
-                    +------------------+
-                    |   REST API       |
-                    |   (FastAPI)      |
-                    +--------+---------+
-                             |
-                    +--------v---------+
-                    | Orchestration    |
-                    | Engine (Python)  |
-                    +--------+---------+
-                             |
-              +--------------+--------------+
-              |              |              |
-     +--------v---+  +------v------+  +----v--------+
-     | Terraform  |  |   Ansible   |  |  ITSM       |
-     | (vSphere/  |  | (Config     |  | Integration |
-     |  NSX-T)    |  |  Mgmt)      |  | (ServiceNow)|
-     +--------+---+  +------+------+  +----+--------+
-              |              |              |
-              +--------------+--------------+
-                             |
-                    +--------v---------+
-                    | VMware vSphere   |
-                    | + NSX-T          |
-                    +------------------+
+```mermaid
+flowchart TD
+    API[REST API<br/>FastAPI] --> ORCH[Orchestration Engine<br/>Python]
+    ORCH --> TF[Terraform<br/>vSphere / NSX-T]
+    ORCH --> ANS[Ansible<br/>Config Mgmt]
+    ORCH --> ITSM[ITSM Integration<br/>ServiceNow]
+    TF --> VS[VMware vSphere + NSX-T]
+    ANS --> VS
+    ITSM --> VS
 ```
 
 ## Key Features
